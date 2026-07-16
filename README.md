@@ -133,6 +133,34 @@ normal `sync` — the command prints the options and exits with code 2. Resolve 
 
 `pull` refuses to overwrite unsynced local changes — add `--force` to accept the loss.
 
+## How it compares
+
+Most ways to script Anki go through **AnkiConnect** — an HTTP API exposed by a plugin. That
+means the Anki **desktop app has to be running** with the plugin loaded and a server on port
+8765: every AnkiConnect-based tool inherits this, including the CLIs (`trrc`, `inka`, the
+Node.js `anki-cli`) and essentially all the "anki-mcp-server" projects — they're thin wrappers
+that just forward to AnkiConnect.
+
+The one close relative is **apy**: like this tool, it works on the collection directly without
+a running Anki and can sync to AnkiWeb. But it's a Python app (`uv`/`pipx`) that pulls in
+Anki's Python package, and it has no agent/MCP interface.
+
+anki-cli is the only one that is **standalone (a single binary, no app, no plugin, no Python)**
+*and* speaks **MCP** for agents *and* syncs to AnkiWeb directly:
+
+| | anki-cli | AnkiConnect *(+ its MCP/CLI wrappers)* | apy |
+|---|:---:|:---:|:---:|
+| **Works without Anki desktop running** | ✅ | ❌ needs the app + plugin open | ✅ |
+| **Syncs to AnkiWeb** | ✅ direct (Anki's sync protocol) | ✅ (via the running app) | ✅ |
+| **MCP server for agents** | ✅ built in | ⚠️ separate wrapper projects | ❌ |
+| **Install** | one prebuilt binary | plugin **+** desktop Anki **+** a wrapper | `pip`/`uv`, pulls in Anki's Python pkg |
+| **Runtime dependencies** | none | Anki app running on `:8765` | Python |
+| **Built on Anki's real core** | ✅ `rslib` | ✅ (it *is* Anki) | ✅ Anki's Python lib |
+| **Multiple isolated collections/accounts** | ✅ per-directory | ❌ one open profile | ⚠️ config-based |
+
+The trade-off: because it never opens the desktop app, anki-cli doesn't do card **study**
+(scheduling/review) or **media** sync yet — see below.
+
 ## Scope & limitations
 
 - `.anki/` holds `collection.anki2` — a regular SQLite DB with Anki's schema, openable in
