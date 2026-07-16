@@ -1,113 +1,158 @@
 # anki-cli
 
-Git-подобный CLI для Anki: локальная копия коллекции, правки из терминала (или от агента), синхронизация с AnkiWeb с явным разрешением конфликтов.
+A git-like CLI for Anki: keep a local copy of your collection, edit it from the terminal
+(or from an agent), and sync with AnkiWeb with explicit conflict resolution.
 
-Собран поверх официального `rslib` (Rust-ядра Anki, [ankitects/anki](https://github.com/ankitects/anki)) — то есть база данных, схема и протокол синхронизации ровно те же, что у настоящего Anki. Один самостоятельный бинарник.
+Built on top of the official `rslib` (Anki's Rust core, [ankitects/anki](https://github.com/ankitects/anki)) —
+so the database, schema, and sync protocol are exactly the same as real Anki. A single
+self-contained binary.
 
-## Ментальная модель (как git)
+## Mental model (like git)
 
-| git | anki-cli | что делает |
+| git | anki-cli | what it does |
 |---|---|---|
-| `clone` / `reset --hard origin` | `pull` | полная загрузка коллекции с сервера (затирает локальную) |
-| `push --force` | `push` | полная заливка локальной коллекции на сервер (затирает серверную) |
-| `pull` + `push` (merge) | `sync` | обычная двусторонняя синхронизация; **exit code 2** при конфликте |
-| `status` | `status` | локальные изменения + отличается ли сервер |
+| `clone` / `reset --hard origin` | `pull` | full download of the collection from the server (overwrites local) |
+| `push --force` | `push` | full upload of the local collection to the server (overwrites remote) |
+| `pull` + `push` (merge) | `sync` | normal two-way sync; **exit code 2** on conflict |
+| `status` | `status` | local changes + whether the server differs |
 
-Конфликт (после смены схемы, `push` с другого устройства и т.п.) обычным `sync` не решается — команда печатает варианты и выходит с кодом 2. Решение: `pull` (взять серверную версию) или `push` (взять локальную).
+A conflict (after a schema change, a `push` from another device, etc.) can't be resolved by a
+normal `sync` — the command prints the options and exits with code 2. Resolve it with `pull`
+(take the server version) or `push` (take the local version).
 
-`pull` откажется затирать несинканные локальные изменения — добавьте `--force`, чтобы согласиться на потерю.
+`pull` refuses to overwrite unsynced local changes — add `--force` to accept the loss.
 
-## Быстрый старт
+## Quick start
 
-Коллекция живёт в каталоге проекта (git-модель): `init` создаёт `./.anki/`, остальные команды ищут его вверх по дереву от текущего каталога. В каждом таком каталоге — свой аккаунт и свой ключ сессии, так что несколько аккаунтов = несколько каталогов.
+The collection lives in a project directory (git model): `init` creates `./.anki/`, and the
+other commands look for it upward from the current directory. Each such directory has its own
+account and its own session key, so multiple accounts = multiple directories.
 
 ```bash
 cd ~/lang/deutsch
-anki-cli init                                     # создаёт ./.anki (как git init)
-anki-cli login -u you@example.com -p 'password'   # или env: ANKI_USERNAME / ANKI_PASSWORD
-anki-cli pull                                     # забрать коллекцию с AnkiWeb
+anki-cli init                                     # creates ./.anki (like git init)
+anki-cli login -u you@example.com -p 'password'   # or env: ANKI_USERNAME / ANKI_PASSWORD
+anki-cli pull                                     # fetch the collection from AnkiWeb
 
-anki-cli add -d "Deutsch::A1" "der Hund" "собака" -t "noun a1"
-anki-cli add -m "Basic (and reversed card)" --field Front="die Katze" --field Back="кошка"
+anki-cli add -d "Deutsch::A1" "der Hund" "dog" -t "noun a1"
+anki-cli add -m "Basic (and reversed card)" --field Front="die Katze" --field Back="cat"
 anki-cli add -m Cloze "Der {{c1::Hund}} bellt."
 
-anki-cli sync                                     # залить изменения (двусторонний merge)
+anki-cli sync                                     # push changes up (two-way merge)
 ```
 
-## Команды
+## Commands
 
 ```
-init                                          создать ./.anki в текущем каталоге
-login -u <email> -p <pass> [--endpoint URL]   логин, ключ сессии сохраняется в .anki/config.json (0600)
-logout                                        забыть ключ
-status [--offline]                            заметки/карточки, локальные изменения, статус сервера
-sync                                          двусторонняя синхронизация (exit 2 = конфликт)
-pull [--force]                                полная загрузка с сервера
-push                                          полная заливка на сервер
+init                                          create ./.anki in the current directory
+login -u <email> -p <pass> [--endpoint URL]   log in; session key saved in .anki/config.json (0600)
+logout                                        forget the session key
+status [--offline]                            notes/cards, local changes, server status
+sync                                          two-way sync (exit 2 = conflict)
+pull [--force]                                full download from the server
+push                                          full upload to the server
 
-add [-d DECK] [-m MODEL] [значения полей...] [--field Имя=Значение]... [-t "теги"]
-search <запрос> [--limit N]                   поисковый синтаксис Anki: deck:X tag:Y слово
-show <note_id>                                заметка целиком
-edit <note_id> [--field Имя=Значение]... [--add-tags "..."] [--remove-tags "..."]
-rm <note_id>...                               удалить заметки (с их карточками)
-decks                                         список колод с числом карточек
-models [имя]                                  список типов заметок / поля конкретного типа
+add [-d DECK] [-m MODEL] [field values...] [--field Name=Value]... [-t "tags"]
+search <query> [--limit N]                    Anki search syntax: deck:X tag:Y word
+show <note_id>                                the full note
+edit <note_id> [--field Name=Value]... [--add-tags "..."] [--remove-tags "..."]
+rm <note_id>...                               delete notes (with their cards)
+decks                                         list decks with card counts
+models [name]                                 list notetypes / fields of a specific notetype
 ```
 
-Глобальные флаги:
+Global flags:
 
-- `--json` — машиночитаемый вывод (для агентов); ошибки в JSON уходят в stderr.
-- `--dir PATH` — явно указать каталог данных, минуя поиск `.anki/`. Приоритет: `--dir` > `$ANKI_CLI_HOME` > ближайший `.anki/` вверх по дереву; если ничего нет — ошибка с подсказкой про `init`.
+- `--json` — machine-readable output (for agents); errors go to stderr as JSON.
+- `--dir PATH` — point at the data directory explicitly, skipping the `.anki/` search.
+  Priority: `--dir` > `$ANKI_CLI_HOME` > nearest `.anki/` up the tree; if none, an error with
+  a hint about `init`.
 
-## Пример: рабочий цикл агента
+## Example: an agent's work loop
 
 ```bash
 anki-cli pull
-anki-cli --json search "deck:Spanish tag:verb"       # что уже есть
-anki-cli --json add -d Spanish "el perro" "собака" -t noun
+anki-cli --json search "deck:Spanish tag:verb"       # what's already there
+anki-cli --json add -d Spanish "el perro" "dog" -t noun
 anki-cli sync || {
-  # exit 2: коллекции разошлись — решаем в пользу локальной версии
+  # exit 2: the collections diverged — resolve in favour of the local version
   anki-cli push
 }
 ```
 
-## MCP для Claude
+## MCP for Claude
 
-Тот же бинарник умеет работать MCP-сервером (stdio) — отдельно ничего ставить не нужно:
+The same binary can act as an MCP server (stdio) — nothing extra to install:
 
 ```bash
-cd ~/lang/deutsch          # каталог с .anki (init + login уже сделаны)
+cd ~/lang/deutsch          # a directory with .anki (init already done)
 claude mcp add anki -- anki-cli mcp
 ```
 
-Сервер ищет `.anki/` вверх от рабочего каталога (Claude Code запускает MCP-серверы в каталоге проекта), так что в каждом проекте автоматически используется его коллекция и его аккаунт. Логин остаётся ручным шагом (`anki-cli login`) — пароль и ключ сессии в контекст агента не попадают.
+The server looks for `.anki/` upward from the working directory (Claude Code starts MCP
+servers in the project directory), so each project automatically uses its own collection and
+its own account.
 
-Инструменты: `anki_status`, `anki_sync`, `anki_pull`, `anki_push`, `anki_add_note`, `anki_search`, `anki_get_note`, `anki_edit_note`, `anki_delete_notes`, `anki_list_decks`, `anki_list_models`. Конфликт синка приходит агенту как `result: "conflict"` с подсказкой, решается вызовом `anki_pull`/`anki_push`.
+Authenticate with the **`anki_login`** tool, or run `anki-cli login` once beforehand. To keep
+the password out of the conversation, `anki_login` falls back to the server's
+`ANKI_USERNAME` / `ANKI_PASSWORD` environment variables when its arguments are omitted —
+either way only the session key is stored, never the password.
 
-## Установка
+Tools: `anki_login`, `anki_logout`, `anki_status`, `anki_sync`, `anki_pull`, `anki_push`,
+`anki_add_note`, `anki_search`, `anki_get_note`, `anki_edit_note`, `anki_delete_notes`,
+`anki_list_decks`, `anki_list_models`. A sync conflict reaches the agent as
+`result: "conflict"` with a hint, resolved by calling `anki_pull`/`anki_push`.
 
-Готовые бинарники (Linux x86_64, macOS arm64) собираются GitHub Actions и прикладываются к релизам: https://github.com/tihonove/anki-cli/releases — скачать, `chmod +x`, положить в PATH. Либо собрать самому:
+## Install
 
-## Сборка
-
-Требуется исходное дерево Anki рядом с проектом (rslib подключается по пути `../anki-src/rslib`):
+One-liner (Linux x86_64, macOS arm64):
 
 ```bash
-git clone --depth 1 https://github.com/ankitects/anki.git ../anki-src
-# rslib читает переводы из git-сабмодулей; для english-only сборки хватает пустых папок:
-mkdir -p ../anki-src/ftl/core-repo/core ../anki-src/ftl/qt-repo/desktop
-# нужен protoc (см. .cargo/config.toml — там задаётся PROTOC):
-#   либо apt install protobuf-compiler, либо бинарь с github.com/protocolbuffers/protobuf/releases
-
-cargo build --release          # бинарник в target/release/anki-cli
-cargo test                     # локальные интеграционные тесты (без сети)
+curl -fsSL https://raw.githubusercontent.com/tihonove/anki-cli/main/install.sh | sh
 ```
 
-## Что внутри / ограничения
+It downloads the prebuilt binary into `~/.local/bin` (override with `ANKI_CLI_BIN`, or pin a
+release with `ANKI_CLI_VERSION=vX.Y.Z`). Prefer to do it by hand? Grab the raw binary for your
+platform from the [releases](https://github.com/tihonove/anki-cli/releases), `chmod +x`, and
+put it on your `PATH`. Or build it yourself:
 
-- `.anki/` содержит `collection.anki2` (обычный SQLite со схемой Anki — можно открыть настольным Anki), `config.json`, `collection.media/` и `.gitignore` с `*`, чтобы ничего из этого случайно не попало в git.
-- Ключ сессии (hkey) хранится в `.anki/config.json` в открытом виде (права 0600) — как и у настольного Anki. Пароль не сохраняется. `logout` стирает ключ.
-- AnkiWeb перенаправляет на шард (например `sync11.ankiweb.net`) — CLI сам подхватывает и запоминает эндпоинт.
-- Синхронизация **медиа-файлов пока не реализована** (картинки/аудио в заметках синкаются как текстовые ссылки, сами файлы — нет).
-- Изучение карточек (scheduler/review) в CLI не выведено — предполагается, что учитесь вы в обычном Anki, а CLI служит для наполнения и синка.
-- Лицензия: rslib — AGPL-3.0, соответственно и этот инструмент — AGPL-3.0.
+## Build
+
+`anki-cli` depends on Anki's `rslib` as a pinned **git dependency**, so cargo fetches the
+source (and its i18n submodules) itself — nothing to clone or vendor. You only need `protoc`
+(used by `anki_proto`'s build script):
+
+```bash
+# protoc: apt install protobuf-compiler, or a binary from
+# github.com/protocolbuffers/protobuf/releases; see .cargo/config.toml, which sets PROTOC.
+cargo build --release          # binary at target/release/anki-cli
+cargo test                     # local integration tests (no network)
+```
+
+The easiest path is the dev container in [`.devcontainer/`](.devcontainer/README.md): it ships
+a fresh Rust toolchain and `protoc` preconfigured, so `cargo build` just works.
+
+## Releasing
+
+CI builds the binaries and attaches them to a GitHub release when a `vX.Y.Z` tag is pushed.
+To cut one:
+
+```bash
+scripts/release.sh 0.2.0       # bump Cargo.toml, tag v0.2.0, push -> CI publishes
+DRY_RUN=1 scripts/release.sh 0.2.0   # everything except the push
+```
+
+## What's inside / limitations
+
+- `.anki/` holds `collection.anki2` (a regular SQLite DB with Anki's schema — openable in
+  desktop Anki), `config.json`, `collection.media/`, and a `.gitignore` with `*` so none of it
+  accidentally lands in git.
+- The session key (hkey) is stored in `.anki/config.json` in the clear (mode 0600) — same as
+  desktop Anki. The password is not stored. `logout` erases the key.
+- AnkiWeb redirects to a shard (e.g. `sync11.ankiweb.net`) — the CLI picks that up and
+  remembers the endpoint.
+- Media file sync is **not implemented yet** (images/audio in notes sync as text references;
+  the files themselves don't).
+- Card study (scheduler/review) isn't exposed in the CLI — the assumption is that you study in
+  regular Anki, while the CLI is for authoring and syncing.
+- License: `rslib` is AGPL-3.0, so this tool is AGPL-3.0 too.
