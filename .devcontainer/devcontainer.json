@@ -1,0 +1,21 @@
+{
+  "name": "anki-cli (Rust)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    // anki_proto's build script needs protoc. The repo's .cargo/config.toml pins a
+    // user-specific PROTOC path with force=false, so this env var takes precedence
+    // and points at the protoc installed in the image.
+    "PROTOC": "/usr/local/bin/protoc"
+  },
+  "mounts": [
+    // Persist the cargo registry (crates.io) and git-dependency caches across rebuilds.
+    "source=anki-cli-cargo-registry,target=/usr/local/cargo/registry,type=volume",
+    "source=anki-cli-cargo-git,target=/usr/local/cargo/git,type=volume"
+  ],
+  // Freshly-created named volumes mount as root:root; hand the cargo caches to the cargo
+  // user so cargo can populate them. Then print tool versions as a sanity check.
+  "postCreateCommand": "sudo chown -R vscode:vscode /usr/local/cargo/registry /usr/local/cargo/git && rustc --version && cargo --version && protoc --version && vexx --version && (claude --version || true)"
+}
