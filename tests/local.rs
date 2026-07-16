@@ -153,6 +153,76 @@ fn sync_without_login_fails_cleanly() {
 }
 
 #[test]
+fn init_and_walk_up_resolution() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+
+    // init creates .anki with a gitignore
+    Command::cargo_bin("anki-cli")
+        .unwrap()
+        .current_dir(root)
+        .env_remove("ANKI_CLI_HOME")
+        .arg("init")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Initialized"));
+    assert!(root.join(".anki/.gitignore").exists());
+
+    // re-init refuses
+    Command::cargo_bin("anki-cli")
+        .unwrap()
+        .current_dir(root)
+        .env_remove("ANKI_CLI_HOME")
+        .arg("init")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already exists"));
+
+    // commands run from a nested subdirectory find the collection up the tree
+    let nested = root.join("a/b");
+    std::fs::create_dir_all(&nested).unwrap();
+    Command::cargo_bin("anki-cli")
+        .unwrap()
+        .current_dir(&nested)
+        .env_remove("ANKI_CLI_HOME")
+        .args(["add", "front", "back"])
+        .assert()
+        .success();
+    assert!(root.join(".anki/collection.anki2").exists());
+
+    // config lands inside .anki with private permissions
+    Command::cargo_bin("anki-cli")
+        .unwrap()
+        .current_dir(&nested)
+        .env_remove("ANKI_CLI_HOME")
+        .arg("logout")
+        .assert()
+        .success();
+    let config = root.join(".anki/config.json");
+    assert!(config.exists());
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&config).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
+}
+
+#[test]
+fn uninitialized_directory_fails_with_hint() {
+    let tmp = tempfile::tempdir().unwrap();
+
+    Command::cargo_bin("anki-cli")
+        .unwrap()
+        .current_dir(tmp.path())
+        .env_remove("ANKI_CLI_HOME")
+        .args(["status", "--offline"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("anki-cli init"));
+}
+
+#[test]
 fn rm_nonexistent_note_fails() {
     let tmp = tempfile::tempdir().unwrap();
     let dir = tmp.path();

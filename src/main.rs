@@ -34,6 +34,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Start a collection here: create ./.anki (like git init)
+    Init,
     /// Authenticate against AnkiWeb (or a custom sync server) and store the session key
     Login {
         #[arg(short, long, env = "ANKI_USERNAME")]
@@ -176,10 +178,25 @@ fn print_note_full(n: &NoteInfo) {
 }
 
 async fn run(cli: &Cli) -> Result<ExitCode> {
+    if let Command::Init = &cli.command {
+        let dir = match &cli.dir {
+            Some(dir) => config::init_dir_at(dir)?,
+            None => config::init_dir(&std::env::current_dir()?)?,
+        };
+        if cli.json {
+            print_json(&serde_json::json!({"initialized": dir}));
+        } else {
+            println!("Initialized empty Anki collection dir at {}.", dir.display());
+            println!("Next: `anki-cli login -u <email> -p <password>`, then `anki-cli pull`.");
+        }
+        return Ok(ExitCode::SUCCESS);
+    }
+
     let dir = config::resolve_dir(cli.dir.clone())?;
     let mut cfg = Config::load(&dir)?;
 
     match &cli.command {
+        Command::Init => unreachable!("handled above"),
         Command::Login {
             username,
             password,
