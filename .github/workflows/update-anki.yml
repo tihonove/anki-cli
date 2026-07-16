@@ -1,0 +1,58 @@
+name: Update anki pin
+
+# Weekly check for a newer anki/rslib release: re-pin the git dependency and open
+# a PR. CI on that PR (ci.yml) builds and tests against the new rslib, so a red
+# check means rslib changed its API and the bump needs a manual fix.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Highest STABLE release tag of ankitects/anki (e.g. 26.05). The grep keeps
+      # only plain X.Y / X.Y.Z tags, dropping betas/rcs (25.08b1, 25.09rc1) and
+      # junk tags (release, packaging-test, ...); `sort -V | tail -1` picks the
+      # newest. To track main HEAD instead, replace the whole pipeline with:
+      #   git ls-remote https://github.com/ankitects/anki HEAD | cut -f1
+      # and pass that SHA to the script below.
+      - name: Find latest anki release tag
+        id: latest
+        run: |
+          tag=$(git ls-remote --tags --refs https://github.com/ankitects/anki \
+                | sed 's#.*refs/tags/##' \
+                | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' \
+                | sort -V | tail -1)
+          echo "Latest anki release tag: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      # No-op if already on that commit; cargo update needs no protoc (no build).
+      - name: Re-pin to the latest tag
+        run: scripts/update-anki.sh "${{ steps.latest.outputs.tag }}"
+
+      # A PR opened with the default GITHUB_TOKEN would NOT trigger ci.yml
+      # (GitHub blocks workflow-created PRs from starting more workflows), so the
+      # bump would show no checks. GH_PAT (a fine-grained PAT with Contents +
+      # Pull requests write) opens the PR as a user, so ci.yml runs on it.
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GH_PAT }}
+          branch: auto/anki-bump
+          title: "Bump anki pin to ${{ steps.latest.outputs.tag }}"
+          commit-message: "Bump anki pin to ${{ steps.latest.outputs.tag }}"
+          body: |
+            Automated re-pin of the anki/rslib git dependency to `${{ steps.latest.outputs.tag }}`.
+
+            CI on this PR runs the full build + tests against the new rslib.
+            A red check means rslib changed its API — fix the bump manually/locally.
