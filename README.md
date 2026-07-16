@@ -138,8 +138,10 @@ CI builds the binaries and attaches them to a GitHub release when a `vX.Y.Z` tag
 To cut one:
 
 ```bash
-scripts/release.sh 0.2.0       # bump Cargo.toml, tag v0.2.0, push -> CI publishes
-DRY_RUN=1 scripts/release.sh 0.2.0   # everything except the push
+scripts/release.sh patch       # e.g. 0.1.0 -> 0.1.1: bump Cargo.toml, tag, push -> CI publishes
+scripts/release.sh minor       # 0.1.0 -> 0.2.0
+scripts/release.sh major       # 0.1.0 -> 1.0.0
+DRY_RUN=1 scripts/release.sh patch   # everything except the push
 ```
 
 ## What's inside / limitations

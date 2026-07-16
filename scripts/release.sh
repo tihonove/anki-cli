@@ -2,19 +2,35 @@
 # Cut a release locally: bump the version, commit, tag vX.Y.Z, and push.
 # Pushing the tag is what triggers CI to build and publish the binaries.
 #
-#   scripts/release.sh 0.2.0        # bump, tag, push -> CI releases
-#   DRY_RUN=1 scripts/release.sh 0.2.0   # do everything except the push
+#   scripts/release.sh patch        # 0.1.0 -> 0.1.1, tag, push -> CI releases
+#   scripts/release.sh minor        # 0.1.0 -> 0.2.0
+#   scripts/release.sh major        # 0.1.0 -> 1.0.0
+#   DRY_RUN=1 scripts/release.sh patch   # everything except the push
 set -eu
 
-usage() { echo "usage: scripts/release.sh <version>   e.g. scripts/release.sh 0.2.0" >&2; exit 1; }
+usage() { echo "usage: scripts/release.sh <major|minor|patch>" >&2; exit 1; }
 [ $# -eq 1 ] || usage
 
-VERSION="${1#v}"
-echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$' \
-  || { echo "error: '$1' is not a semver version (e.g. 0.2.0)" >&2; exit 1; }
-TAG="v$VERSION"
-
 cd "$(git rev-parse --show-toplevel)"
+
+current="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+echo "$current" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+  || { echo "error: current Cargo.toml version '$current' is not plain MAJOR.MINOR.PATCH" >&2; exit 1; }
+
+# Split MAJOR.MINOR.PATCH with parameter expansion (no external tools).
+major="${current%%.*}"
+rest="${current#*.}"
+minor="${rest%%.*}"
+patch="${rest##*.}"
+
+case "$1" in
+  major) major=$((major + 1)); minor=0; patch=0 ;;
+  minor) minor=$((minor + 1)); patch=0 ;;
+  patch) patch=$((patch + 1)) ;;
+  *) usage ;;
+esac
+VERSION="$major.$minor.$patch"
+TAG="v$VERSION"
 
 # Guards: clean tree, tag not taken.
 [ -z "$(git status --porcelain)" ] \
@@ -23,9 +39,7 @@ if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1; then
   echo "error: tag $TAG already exists" >&2; exit 1
 fi
 
-current="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
-[ -n "$current" ] || { echo "error: could not read current version from Cargo.toml" >&2; exit 1; }
-echo "Releasing $current -> $VERSION"
+echo "Releasing $current -> $VERSION ($1)"
 
 # Bump [package] version and sync Cargo.lock so CI's --locked stays happy.
 sed -i.bak "s/^version = \"$current\"/version = \"$VERSION\"/" Cargo.toml && rm -f Cargo.toml.bak
