@@ -1,8 +1,10 @@
 //! Minimal MCP (Model Context Protocol) server over stdio.
 //!
 //! Speaks newline-delimited JSON-RPC 2.0, exposing the collection operations
-//! as tools. Run `anki-cli login` in the collection directory once beforehand;
-//! the server never sees the password.
+//! as tools. Authenticate with the `anki_login` tool (or run `anki-cli login`
+//! beforehand). To keep the password out of the conversation, `anki_login` reads
+//! `ANKI_USERNAME` / `ANKI_PASSWORD` from the server's environment when the
+//! arguments are omitted. Either way only the resulting session key is stored.
 
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
@@ -84,6 +86,20 @@ fn tool_definitions() -> Value {
     });
     let tags_prop = json!({"type": "array", "items": {"type": "string"}});
     json!([
+        {
+            "name": "anki_login",
+            "description": "Authenticate against AnkiWeb (or a custom sync server) and store the session key in .anki/config.json. The password is exchanged for a session key and never stored. If username/password are omitted, the server's ANKI_USERNAME / ANKI_PASSWORD environment variables are used — prefer that so the password stays out of the conversation.",
+            "inputSchema": {"type": "object", "properties": {
+                "username": {"type": "string", "description": "AnkiWeb email; falls back to $ANKI_USERNAME"},
+                "password": {"type": "string", "description": "AnkiWeb password; falls back to $ANKI_PASSWORD. Not stored."},
+                "endpoint": {"type": "string", "description": "Custom sync server URL (default: AnkiWeb)"},
+            }},
+        },
+        {
+            "name": "anki_logout",
+            "description": "Forget stored credentials (clears the session key from .anki/config.json).",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
         {
             "name": "anki_status",
             "description": "Collection stats and sync state (local changes; whether the server differs). Set offline=true to skip the network check.",
@@ -169,6 +185,11 @@ fn str_arg(args: &Value, key: &str) -> Option<String> {
     args.get(key).and_then(Value::as_str).map(str::to_string)
 }
 
+/// A credential from the environment, ignoring an unset-or-empty variable.
+fn env_cred(var: &str) -> Option<String> {
+    std::env::var(var).ok().filter(|v| !v.is_empty())
+}
+
 fn tags_arg(args: &Value, key: &str) -> Vec<String> {
     args.get(key)
         .and_then(Value::as_array)
@@ -207,6 +228,22 @@ async fn call_tool(dir_flag: &Option<PathBuf>, params: &Value) -> Result<String>
     let mut cfg = Config::load(&dir)?;
 
     match name {
+        "anki_login" => {
+            let username = str_arg(&args, "username")
+                .or_else(|| env_cred("ANKI_USERNAME"))
+                .ok_or_else(|| anyhow!("missing username (pass it or set ANKI_USERNAME)"))?;
+            let password = str_arg(&args, "password")
+                .or_else(|| env_cred("ANKI_PASSWORD"))
+                .ok_or_else(|| anyhow!("missing password (pass it or set ANKI_PASSWORD)"))?;
+            let endpoint = str_arg(&args, "endpoint");
+            sync::login(&dir, &mut cfg, &username, &password, endpoint).await?;
+            pretty(&json!({"logged_in": username}))
+        }
+        "anki_logout" => {
+            cfg.hkey = None;
+            cfg.save(&dir)?;
+            pretty(&json!({"logged_out": true}))
+        }
         "anki_status" => {
             let offline = args.get("offline").and_then(Value::as_bool).unwrap_or(false);
             pretty(&sync::status(&dir, &cfg, offline).await?)
