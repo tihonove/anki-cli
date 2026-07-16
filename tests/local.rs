@@ -235,6 +235,47 @@ fn rm_nonexistent_note_fails() {
 }
 
 #[test]
+fn mcp_server_stdio_flow() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    let requests = concat!(
+        r#"{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-03-26"}}"#, "\n",
+        r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#, "\n",
+        r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#, "\n",
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"anki_add_note","arguments":{"deck":"D","fields":{"Front":"f","Back":"b"},"tags":["t1"]}}}"#, "\n",
+        r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"anki_search","arguments":{"query":"tag:t1"}}}"#, "\n",
+        r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"anki_get_note","arguments":{"note_id":999}}}"#, "\n",
+    );
+    let out = cli(dir).arg("mcp").write_stdin(requests).assert().success();
+    let stdout = String::from_utf8(out.get_output().stdout.clone()).unwrap();
+    let responses: Vec<serde_json::Value> = stdout
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    // 5 requests with ids get responses; the notification does not.
+    assert_eq!(responses.len(), 5);
+
+    assert_eq!(responses[0]["result"]["serverInfo"]["name"], "anki-cli");
+    let tools = responses[1]["result"]["tools"].as_array().unwrap();
+    assert!(tools.iter().any(|t| t["name"] == "anki_sync"));
+
+    assert_eq!(responses[2]["result"]["isError"], false);
+    let added: serde_json::Value =
+        serde_json::from_str(responses[2]["result"]["content"][0]["text"].as_str().unwrap())
+            .unwrap();
+    assert_eq!(added["fields"][0]["value"], "f");
+
+    let found: serde_json::Value =
+        serde_json::from_str(responses[3]["result"]["content"][0]["text"].as_str().unwrap())
+            .unwrap();
+    assert_eq!(found.as_array().unwrap().len(), 1);
+
+    // bad note id surfaces as a tool error, not a crash
+    assert_eq!(responses[4]["result"]["isError"], true);
+}
+
+#[test]
 fn cloze_notetype_works() {
     let tmp = tempfile::tempdir().unwrap();
     let dir = tmp.path();

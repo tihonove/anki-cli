@@ -33,7 +33,6 @@ pub fn auth_from_config(config: &Config) -> Result<SyncAuth> {
 
 pub fn http_client() -> reqwest::Client {
     reqwest::Client::builder()
-        .use_native_tls()
         .build()
         .expect("building http client")
 }

@@ -1,5 +1,6 @@
 mod col;
 mod config;
+mod mcp;
 mod notes;
 mod sync;
 
@@ -111,6 +112,8 @@ enum Command {
         /// Show field names of this notetype
         name: Option<String>,
     },
+    /// Run as an MCP server over stdio (for `claude mcp add anki -- anki-cli mcp`)
+    Mcp,
 }
 
 fn main() -> ExitCode {
@@ -178,6 +181,12 @@ fn print_note_full(n: &NoteInfo) {
 }
 
 async fn run(cli: &Cli) -> Result<ExitCode> {
+    if let Command::Mcp = &cli.command {
+        // Directory resolution happens lazily per tool call, so the server
+        // starts fine in a not-yet-initialized directory.
+        mcp::serve(cli.dir.clone()).await?;
+        return Ok(ExitCode::SUCCESS);
+    }
     if let Command::Init = &cli.command {
         let dir = match &cli.dir {
             Some(dir) => config::init_dir_at(dir)?,
@@ -196,7 +205,7 @@ async fn run(cli: &Cli) -> Result<ExitCode> {
     let mut cfg = Config::load(&dir)?;
 
     match &cli.command {
-        Command::Init => unreachable!("handled above"),
+        Command::Init | Command::Mcp => unreachable!("handled above"),
         Command::Login {
             username,
             password,

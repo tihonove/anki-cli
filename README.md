@@ -71,6 +71,23 @@ anki-cli sync || {
 }
 ```
 
+## MCP для Claude
+
+Тот же бинарник умеет работать MCP-сервером (stdio) — отдельно ничего ставить не нужно:
+
+```bash
+cd ~/lang/deutsch          # каталог с .anki (init + login уже сделаны)
+claude mcp add anki -- anki-cli mcp
+```
+
+Сервер ищет `.anki/` вверх от рабочего каталога (Claude Code запускает MCP-серверы в каталоге проекта), так что в каждом проекте автоматически используется его коллекция и его аккаунт. Логин остаётся ручным шагом (`anki-cli login`) — пароль и ключ сессии в контекст агента не попадают.
+
+Инструменты: `anki_status`, `anki_sync`, `anki_pull`, `anki_push`, `anki_add_note`, `anki_search`, `anki_get_note`, `anki_edit_note`, `anki_delete_notes`, `anki_list_decks`, `anki_list_models`. Конфликт синка приходит агенту как `result: "conflict"` с подсказкой, решается вызовом `anki_pull`/`anki_push`.
+
+## Установка
+
+Готовые бинарники (Linux x86_64, macOS arm64) собираются GitHub Actions и прикладываются к релизам: https://github.com/tihonove/anki-cli/releases — скачать, `chmod +x`, положить в PATH. Либо собрать самому:
+
 ## Сборка
 
 Требуется исходное дерево Anki рядом с проектом (rslib подключается по пути `../anki-src/rslib`):
