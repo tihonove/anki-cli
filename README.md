@@ -99,7 +99,7 @@ the password out of the conversation, `anki_login` falls back to the server's
 either way only the session key is stored, never the password.
 
 Tools: `anki_login`, `anki_logout`, `anki_status`, `anki_sync`, `anki_pull`, `anki_push`,
-`anki_add_note`, `anki_search`, `anki_get_note`, `anki_edit_note`, `anki_delete_notes`,
+`anki_add_note`, `anki_add_notes` (bulk), `anki_search`, `anki_get_note`, `anki_edit_note`, `anki_delete_notes`,
 `anki_list_decks`, `anki_list_models`. A sync conflict reaches the agent as
 `result: "conflict"` with a hint, resolved by calling `anki_pull`/`anki_push`.
 

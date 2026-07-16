@@ -135,6 +135,25 @@ fn tool_definitions() -> Value {
             }, "required": ["fields"]},
         },
         {
+            "name": "anki_add_notes",
+            "description": "Add many notes in one call (bulk). Each entry needs `fields`; its `deck`/`model`/`tags` fall back to the top-level defaults when omitted. Returns the created notes plus any per-entry failures (by index), so a bad entry doesn't block the rest. Check field names with anki_list_models first if unsure.",
+            "inputSchema": {"type": "object", "properties": {
+                "deck": {"type": "string", "default": "Default", "description": "Default deck for entries without their own; created if missing. Use :: for nesting"},
+                "model": {"type": "string", "default": "Basic", "description": "Default notetype for entries without their own"},
+                "tags": tags_prop,
+                "notes": {
+                    "type": "array",
+                    "description": "Notes to add",
+                    "items": {"type": "object", "properties": {
+                        "fields": fields_prop,
+                        "deck": {"type": "string"},
+                        "model": {"type": "string"},
+                        "tags": tags_prop,
+                    }, "required": ["fields"]},
+                },
+            }, "required": ["notes"]},
+        },
+        {
             "name": "anki_search",
             "description": "Search notes with Anki's search syntax, e.g. 'deck:Spanish tag:verb hola', 'added:7', '\"exact phrase\"'. Returns full notes.",
             "inputSchema": {"type": "object", "properties": {
@@ -269,6 +288,42 @@ async fn call_tool(dir_flag: &Option<PathBuf>, params: &Value) -> Result<String>
             let tags = tags_arg(&args, "tags");
             let mut col = col::open_collection(&dir)?;
             pretty(&notes::add_note(&mut col, &deck, &model, &[], &fields, &tags)?)
+        }
+        "anki_add_notes" => {
+            let default_deck = str_arg(&args, "deck").unwrap_or_else(|| "Default".into());
+            let default_model = str_arg(&args, "model").unwrap_or_else(|| "Basic".into());
+            let default_tags = tags_arg(&args, "tags");
+            let items = args
+                .get("notes")
+                .and_then(Value::as_array)
+                .ok_or_else(|| anyhow!("notes must be an array of note objects"))?;
+            if items.is_empty() {
+                return Err(anyhow!("notes must be a non-empty array"));
+            }
+            let mut col = col::open_collection(&dir)?;
+            let mut added = Vec::new();
+            let mut failed = Vec::new();
+            for (i, item) in items.iter().enumerate() {
+                let fields = fields_arg(item, "fields");
+                if fields.is_empty() {
+                    failed.push(json!({"index": i, "error": "fields must be a non-empty object of name→value"}));
+                    continue;
+                }
+                let deck = str_arg(item, "deck").unwrap_or_else(|| default_deck.clone());
+                let model = str_arg(item, "model").unwrap_or_else(|| default_model.clone());
+                let mut tags = tags_arg(item, "tags");
+                if tags.is_empty() {
+                    tags = default_tags.clone();
+                }
+                match notes::add_note(&mut col, &deck, &model, &[], &fields, &tags) {
+                    Ok(info) => added.push(info),
+                    Err(e) => failed.push(json!({"index": i, "error": format!("{e:#}")})),
+                }
+            }
+            pretty(&json!({
+                "added": serde_json::to_value(&added)?,
+                "failed": Value::Array(failed),
+            }))
         }
         "anki_search" => {
             let query = str_arg(&args, "query").ok_or_else(|| anyhow!("missing query"))?;
