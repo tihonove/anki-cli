@@ -1,0 +1,4 @@
+# anki_proto's build script needs a protoc binary; point it at a local install.
+# Adjust if your protoc lives elsewhere (or install protobuf-compiler system-wide).
+[env]
+PROTOC = { value = "/home/tihonove/.local/protoc/bin/protoc", force = false }
