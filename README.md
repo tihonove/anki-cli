@@ -139,12 +139,12 @@ Almost everything that scripts Anki goes through **AnkiConnect** — a plugin th
 while the **desktop app is open**. anki-cli talks to AnkiWeb itself, so nothing has to be
 running, and it's the only one that's also an MCP server for agents.
 
-| Project | No Anki app | AnkiWeb sync | CLI | MCP | Install |
-|---|:---:|:---:|:---:|:---:|---|
-| **anki-cli** *(this)* | ✅ | ✅ | ✅ | ✅ | 1 binary |
-| [apy](https://github.com/lervag/apy) | ✅ | ✅ | ✅ | ❌ | pip / uv |
-| [AnkiConnect](https://github.com/FooSoft/anki-connect) | ❌ | ✅ | ❌ | ❌ | plugin + app |
-| [anki-mcp-server](https://github.com/ankimcp/anki-mcp-server) | ❌ | ✅ | ❌ | ✅ | + AnkiConnect |
+| Project | No Anki app | AnkiWeb sync | Media sync | CLI | MCP | Install |
+|---|:---:|:---:|:---:|:---:|:---:|---|
+| **anki-cli** *(this)* | ✅ | ✅ | ❌ *(not yet)* | ✅ | ✅ | 1 binary |
+| [apy](https://github.com/lervag/apy) | ✅ | ✅ | ✅ | ✅ | ❌ | pip / uv |
+| [AnkiConnect](https://github.com/FooSoft/anki-connect) | ❌ | ✅ | ✅ | ❌ | ❌ | plugin + app |
+| [anki-mcp-server](https://github.com/ankimcp/anki-mcp-server) | ❌ | ✅ | ✅ | ❌ | ✅ | + AnkiConnect |
 
 Same story for the other AnkiConnect front-ends (`trrc`, `inka`, the Node `anki-cli`): handy,
 but the app has to stay open.
