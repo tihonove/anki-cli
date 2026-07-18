@@ -1,0 +1,3 @@
+# Keep binary test fixtures byte-exact across platforms (no CRLF conversion on
+# Windows checkout, which would corrupt the PNG the e2e test compares against).
+*.png binary

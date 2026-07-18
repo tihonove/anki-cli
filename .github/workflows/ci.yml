@@ -92,11 +92,19 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       # .cargo/config.toml points PROTOC at a local dev path (force = false),
-      # so an explicit env var here takes precedence. `which` works in Git Bash
-      # on the Windows runner too.
-      - name: Point PROTOC at the installed binary
+      # so an explicit env var here takes precedence. The path must be native to
+      # the runner OS: bash `which` on Windows yields a Git-Bash path
+      # (/d/a/.../protoc.exe) that native cargo/prost can't execute, so resolve
+      # a Windows path via PowerShell there.
+      - name: Point PROTOC at the installed binary (unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: echo "PROTOC=$(which protoc)" >> "$GITHUB_ENV"
+
+      - name: Point PROTOC at the installed binary (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "PROTOC=$((Get-Command protoc).Source)" >> $env:GITHUB_ENV
 
       - uses: Swatinem/rust-cache@v2
 
