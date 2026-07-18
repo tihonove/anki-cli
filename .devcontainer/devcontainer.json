@@ -17,5 +17,5 @@
   ],
   // Freshly-created named volumes mount as root:root; hand the cargo caches to the cargo
   // user so cargo can populate them. Then print tool versions as a sanity check.
-  "postCreateCommand": "sudo chown -R vscode:vscode /usr/local/cargo/registry /usr/local/cargo/git && rustc --version && cargo --version && protoc --version && vexx --version && (claude --version || true)"
+  "postCreateCommand": "sudo chown -R vscode:vscode /usr/local/cargo/registry /usr/local/cargo/git && rustc --version && cargo --version && protoc --version && vexx --version && git --version && gh --version && (claude --version || true)"
 }

@@ -7,8 +7,22 @@ FROM mcr.microsoft.com/devcontainers/rust:1-bookworm
 # TLS is rustls everywhere (reqwest rustls-tls-native-roots + anki `rustls` feature),
 # so no libssl-dev is needed — only ca-certificates for the native root store.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends unzip ca-certificates curl tmux \
+    && apt-get install -y --no-install-recommends unzip ca-certificates curl tmux git \
     && rm -rf /var/lib/apt/lists/*
+
+# --- gh (GitHub CLI) ----------------------------------------------------------
+# Installed from GitHub's official apt repository (keyring + signed source list).
+RUN set -eux; \
+    mkdir -p -m 755 /etc/apt/keyrings; \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      -o /etc/apt/keyrings/githubcli-archive-keyring.gpg; \
+    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg; \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends gh; \
+    rm -rf /var/lib/apt/lists/*; \
+    gh --version
 
 # --- protoc (Protocol Buffers compiler) ---------------------------------------
 # anki_proto's build script requires protoc; CI pins 29.3. Install the matching

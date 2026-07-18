@@ -8,6 +8,8 @@ A Rust dev environment for `anki-cli`, meant to be used from a **terminal** via 
 - **`vexx`** — the TUI editor from <https://github.com/tihonove/vexx>
 - **`claude`** — the Claude Code CLI
 - **`tmux`** — terminal multiplexer
+- **`git`** — version control
+- **`gh`** — the GitHub CLI
 
 ## Prerequisites (host)
 
