@@ -1,6 +1,6 @@
 [package]
 name = "anki-cli"
-version = "0.3.0"
+version = "1.0.0"
 edition = "2021"
 description = "Git-like CLI for Anki collections with AnkiWeb sync"
 license = "AGPL-3.0-or-later"
