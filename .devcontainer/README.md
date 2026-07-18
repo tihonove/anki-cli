@@ -7,6 +7,7 @@ A Rust dev environment for `anki-cli`, meant to be used from a **terminal** via 
 - **protoc 29.3** (required by `anki_proto`'s build script)
 - **`vexx`** — the TUI editor from <https://github.com/tihonove/vexx>
 - **`claude`** — the Claude Code CLI
+- **`tmux`** — terminal multiplexer
 
 ## Prerequisites (host)
 

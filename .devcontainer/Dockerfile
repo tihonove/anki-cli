@@ -7,7 +7,7 @@ FROM mcr.microsoft.com/devcontainers/rust:1-bookworm
 # TLS is rustls everywhere (reqwest rustls-tls-native-roots + anki `rustls` feature),
 # so no libssl-dev is needed — only ca-certificates for the native root store.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends unzip ca-certificates curl \
+    && apt-get install -y --no-install-recommends unzip ca-certificates curl tmux \
     && rm -rf /var/lib/apt/lists/*
 
 # --- protoc (Protocol Buffers compiler) ---------------------------------------
