@@ -16,10 +16,15 @@ use assert_cmd::Command;
 /// Fixed media filename + content, on purpose: identical bytes across runs mean
 /// the same sha1, so the server never accumulates media (re-upload is a no-op)
 /// and no destructive cleanup is needed — each run's `push` replaces the whole
-/// collection anyway. The `.png` extension is cosmetic; media sync transfers
-/// raw bytes and doesn't parse the file.
-const MEDIA_NAME: &str = "anki-cli-e2e.png";
-const MEDIA_BYTES: &[u8] = b"anki-cli e2e media payload v1\n";
+/// collection anyway. A real 100×100 red PNG so the resulting card shows an
+/// actual image, not a broken-image icon.
+///
+/// NB: the filename encodes the content version. Media sync downloads the
+/// server's copy of a name before uploading the local one, so if you ever
+/// change the bytes you MUST also change the name — otherwise a fresh device
+/// pulls the stale server copy and never uploads the new content.
+const MEDIA_NAME: &str = "anki-cli-e2e-red-100x100.png";
+const MEDIA_BYTES: &[u8] = include_bytes!("fixtures/red100.png");
 
 /// Test credentials from the environment, or `None` to skip.
 fn creds() -> Option<(String, String)> {
