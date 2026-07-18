@@ -40,8 +40,10 @@ DRY_RUN=1 scripts/release.sh patch   # everything except the push
   desktop Anki. The password is not stored. `logout` erases the key.
 - AnkiWeb redirects to a shard (e.g. `sync11.ankiweb.net`) — the CLI picks that up and
   remembers the endpoint.
-- Media file sync is **not implemented yet** (images/audio in notes sync as text references;
-  the files themselves don't).
+- Media files (images/audio referenced by notes) sync with `anki-cli sync-media`, kept in
+  `.anki/collection.media`. It's a separate step from collection `sync`: uploads local
+  additions and downloads server-side additions/deletions, merged file-by-file (never
+  conflicts). See `sync::sync_media`, which drives anki's `MediaManager::sync_media`.
 - Card study (scheduler/review) isn't exposed in the CLI — the assumption is that you study in
   regular Anki, while the CLI is for authoring and syncing.
 - License: `rslib` is AGPL-3.0, so this tool is AGPL-3.0 too.

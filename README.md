@@ -65,7 +65,7 @@ password out of the conversation, `anki_login` falls back to the server's `ANKI_
 `ANKI_PASSWORD` environment variables when its arguments are omitted. Either way only the
 session key is stored, never the password.
 
-**Tools** (14):
+**Tools** (15):
 
 - **Auth** — `anki_login`, `anki_logout`
 - **Sync** — `anki_status`, `anki_sync`, `anki_pull`, `anki_push`, `anki_sync_media`
