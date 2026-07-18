@@ -79,12 +79,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     env:
-      # TODO: the password is hardcoded for bootstrapping. After rotating it,
-      # replace these two literals with:
-      #   ANKI_TEST_USERNAME: ${{ secrets.ANKI_TEST_USERNAME }}
-      #   ANKI_TEST_PASSWORD: ${{ secrets.ANKI_TEST_PASSWORD }}
-      ANKI_TEST_USERNAME: tihonov.e@hotmail.com
-      ANKI_TEST_PASSWORD: "123456"
+      ANKI_TEST_USERNAME: ${{ secrets.ANKI_TEST_USERNAME }}
+      ANKI_TEST_PASSWORD: ${{ secrets.ANKI_TEST_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
