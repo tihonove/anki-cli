@@ -125,6 +125,11 @@ fn tool_definitions() -> Value {
             "inputSchema": {"type": "object", "properties": {}},
         },
         {
+            "name": "anki_sync_media",
+            "description": "Sync media files (images, audio) with AnkiWeb: uploads locally-added media and downloads server-side changes. Merges file-by-file and never conflicts. Run after anki_sync when notes reference media files.",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
             "name": "anki_add_note",
             "description": "Add a note (creates its cards). Check field names of the model with anki_list_models first if unsure.",
             "inputSchema": {"type": "object", "properties": {
@@ -278,6 +283,7 @@ async fn call_tool(dir_flag: &Option<PathBuf>, params: &Value) -> Result<String>
             sync::push(&dir, &mut cfg).await?;
             pretty(&json!({"pushed": true}))
         }
+        "anki_sync_media" => pretty(&sync::sync_media(&dir, &mut cfg).await?),
         "anki_add_note" => {
             let deck = str_arg(&args, "deck").unwrap_or_else(|| "Default".into());
             let model = str_arg(&args, "model").unwrap_or_else(|| "Basic".into());

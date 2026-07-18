@@ -153,6 +153,23 @@ fn sync_without_login_fails_cleanly() {
 }
 
 #[test]
+fn sync_media_without_login_fails_cleanly() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    cli(dir)
+        .args(["sync-media"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("not logged in"));
+
+    let out = cli(dir).args(["--json", "sync-media"]).assert().failure();
+    let err: serde_json::Value =
+        serde_json::from_slice(&out.get_output().stderr).unwrap();
+    assert!(err["error"].as_str().unwrap().contains("not logged in"));
+}
+
+#[test]
 fn init_and_walk_up_resolution() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path();

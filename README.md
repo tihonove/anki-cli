@@ -43,6 +43,7 @@ anki-cli add -m "Basic (and reversed card)" --field Front="die Katze" --field Ba
 anki-cli add -m Cloze "Der {{c1::Hund}} bellt."
 
 anki-cli sync                                     # push changes up (two-way merge)
+anki-cli sync-media                               # sync media files (images, audio)
 ```
 
 ## Use it from an agent (MCP)
@@ -67,7 +68,7 @@ session key is stored, never the password.
 **Tools** (14):
 
 - **Auth** — `anki_login`, `anki_logout`
-- **Sync** — `anki_status`, `anki_sync`, `anki_pull`, `anki_push`
+- **Sync** — `anki_status`, `anki_sync`, `anki_pull`, `anki_push`, `anki_sync_media`
 - **Notes** — `anki_add_note`, `anki_add_notes` (bulk), `anki_search`, `anki_get_note`,
   `anki_edit_note`, `anki_delete_notes`
 - **Schema** — `anki_list_decks`, `anki_list_models`
@@ -97,6 +98,7 @@ status [--offline]                            notes/cards, local changes, server
 sync                                          two-way sync (exit 2 = conflict)
 pull [--force]                                full download from the server
 push                                          full upload to the server
+sync-media                                    sync media files (images, audio)
 
 add [-d DECK] [-m MODEL] [field values...] [--field Name=Value]... [-t "tags"]
 search <query> [--limit N]                    Anki search syntax: deck:X tag:Y word
@@ -141,7 +143,7 @@ running, and it's the only one that's also an MCP server for agents.
 
 | Project | No Anki app | AnkiWeb sync | Media sync | CLI | MCP | Install |
 |---|:---:|:---:|:---:|:---:|:---:|---|
-| **anki-cli** *(this)* | ✅ | ✅ | ❌ *(not yet)* | ✅ | ✅ | 1 binary |
+| **anki-cli** *(this)* | ✅ | ✅ | ✅ | ✅ | ✅ | 1 binary |
 | [apy](https://github.com/lervag/apy) | ✅ | ✅ | ✅ | ✅ | ❌ | pip / uv |
 | [AnkiConnect](https://github.com/FooSoft/anki-connect) | ❌ | ✅ | ✅ | ❌ | ❌ | plugin + app |
 | [anki-mcp-server](https://github.com/ankimcp/anki-mcp-server) | ❌ | ✅ | ✅ | ❌ | ✅ | + AnkiConnect |
@@ -155,8 +157,9 @@ but the app has to stay open.
   desktop Anki.
 - The session key (hkey) is stored in `.anki/config.json` (mode 0600). The password is never
   stored; `logout` erases the key.
-- Media file sync is **not implemented yet** (images/audio in notes sync as text references;
-  the files themselves don't).
+- Media files (images/audio referenced by notes) sync with `anki-cli sync-media`, kept in
+  `.anki/collection.media`. It's a separate step from `sync`: collection sync moves the notes,
+  `sync-media` moves the files they point at.
 - Card study (scheduler/review) isn't exposed — the assumption is that you study in regular
   Anki, while this tool is for authoring and syncing.
 - License: `rslib` is AGPL-3.0, so this tool is AGPL-3.0 too.

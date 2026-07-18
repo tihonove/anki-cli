@@ -4,6 +4,7 @@ use anki::sync::collection::normal::SyncActionRequired;
 use anki::sync::collection::status::online_sync_status_check;
 use anki::sync::http_client::HttpSyncClient;
 use anki::sync::login::sync_login;
+use anki::sync::media::progress::MediaSyncProgress;
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 
@@ -155,6 +156,53 @@ pub async fn push(dir: &Path, config: &mut Config) -> Result<()> {
         .await
         .map_err(|e| anyhow::anyhow!("upload failed: {}", e.message(&tr)))?;
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct MediaSyncReport {
+    /// "synced"
+    pub result: String,
+    /// Number of media files in the local media folder after the sync.
+    pub media_files: usize,
+}
+
+/// Sync media files (images, audio, …) with the server: uploads locally-added
+/// files and downloads server-side additions/deletions. Unlike collection sync
+/// this merges file-by-file and never conflicts, so it needs no push/pull
+/// resolution. Media lives alongside the collection in `<dir>/collection.media`.
+pub async fn sync_media(dir: &Path, config: &mut Config) -> Result<MediaSyncReport> {
+    let col = open_collection(dir)?;
+    // Media transfers hit the same sync shard as full up/downloads, so resolve
+    // the redirected endpoint first (AnkiWeb's base host won't serve them).
+    let auth = auth_with_resolved_endpoint(dir, config, &col).await?;
+    let tr = anki::prelude::I18n::template_only();
+
+    let mgr = col
+        .media()
+        .map_err(|e| anyhow::anyhow!("opening media folder: {}", e.message(&tr)))?;
+    let progress = col.new_progress_handler::<MediaSyncProgress>();
+    // `server_usn = None` lets the syncer discover it via begin().
+    mgr.sync_media(progress, auth, http_client(), None)
+        .await
+        .map_err(|e| anyhow::anyhow!("media sync failed: {}", e.message(&tr)))?;
+
+    Ok(MediaSyncReport {
+        result: "synced".into(),
+        media_files: count_media_files(dir),
+    })
+}
+
+/// Count regular files in the local media folder (`<dir>/collection.media`).
+fn count_media_files(dir: &Path) -> usize {
+    let folder = crate::config::collection_path(dir).with_extension("media");
+    std::fs::read_dir(&folder)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().is_file())
+                .count()
+        })
+        .unwrap_or(0)
 }
 
 #[derive(Debug, Serialize)]

@@ -65,6 +65,8 @@ enum Command {
     },
     /// Replace the server collection with the local version (full upload)
     Push,
+    /// Sync media files (images, audio) with the server. Merges file-by-file; never conflicts
+    SyncMedia,
     /// Add a note. Field values positionally in notetype order, or via --field
     Add {
         /// Deck to add the card(s) to (created if missing)
@@ -296,6 +298,17 @@ async fn run(cli: &Cli) -> Result<ExitCode> {
                 print_json(&serde_json::json!({"pushed": true}));
             } else {
                 println!("Uploaded local collection to server.");
+            }
+        }
+        Command::SyncMedia => {
+            let report = sync::sync_media(&dir, &mut cfg).await?;
+            if cli.json {
+                print_json(&report);
+            } else {
+                println!(
+                    "Media sync complete: {} file(s) in local media folder.",
+                    report.media_files
+                );
             }
         }
         Command::Add {
