@@ -9,6 +9,13 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# The e2e job drives a single shared AnkiWeb account, so no two CI runs may
+# touch it at once. Serialize whole runs; queue rather than cancel, so a run is
+# never killed mid-sync (which could leave the account half-updated).
+concurrency:
+  group: anki-cli-ci
+  cancel-in-progress: false
+
 jobs:
   build:
     strategy:
@@ -60,9 +67,51 @@ jobs:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
 
+  # End-to-end tests against a real AnkiWeb account: build the binary and drive
+  # it across two data directories (device A pushes, device B pulls) on each OS.
+  e2e:
+    needs: build
+    strategy:
+      fail-fast: false
+      # One OS at a time: all matrix legs share the same AnkiWeb account.
+      max-parallel: 1
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # TODO: the password is hardcoded for bootstrapping. After rotating it,
+      # replace these two literals with:
+      #   ANKI_TEST_USERNAME: ${{ secrets.ANKI_TEST_USERNAME }}
+      #   ANKI_TEST_PASSWORD: ${{ secrets.ANKI_TEST_PASSWORD }}
+      ANKI_TEST_USERNAME: tihonov.e@hotmail.com
+      ANKI_TEST_PASSWORD: "123456"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          version: "29.3"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # .cargo/config.toml points PROTOC at a local dev path (force = false),
+      # so an explicit env var here takes precedence. `which` works in Git Bash
+      # on the Windows runner too.
+      - name: Point PROTOC at the installed binary
+        shell: bash
+        run: echo "PROTOC=$(which protoc)" >> "$GITHUB_ENV"
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Single test, single thread: the shared account is only ever touched once
+      # at a time. Without ANKI_TEST_* creds this test self-skips.
+      - name: E2E against AnkiWeb
+        run: cargo test --locked --test e2e_ankiweb -- --nocapture --test-threads=1
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: write
