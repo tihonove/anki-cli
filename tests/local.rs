@@ -169,6 +169,42 @@ fn sync_media_without_login_fails_cleanly() {
     assert!(err["error"].as_str().unwrap().contains("not logged in"));
 }
 
+/// `pull`'s guard against discarding local work must judge the collection's
+/// *content*, not just rslib's offline sync status: a never-synced collection
+/// (last sync = 0) reports FullSync from `sync_status_offline` no matter how
+/// empty it is, so an untouched one used to be refused a pull. Offline proxy for
+/// "the guard let us through": the run gets as far as the login check.
+#[test]
+fn pull_guard_lets_an_empty_collection_through() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path();
+
+    cli(dir).arg("init").assert().success();
+    cli(dir)
+        .arg("pull")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("not logged in"));
+
+    // …but a collection carrying a note of its own is held back.
+    cli(dir)
+        .args(["add", "-d", "Default", "-m", "Basic", "front", "back"])
+        .assert()
+        .success();
+    cli(dir)
+        .arg("pull")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unsynced changes"));
+
+    // --force skips the guard, so it too reaches the login check.
+    cli(dir)
+        .args(["pull", "--force"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("not logged in"));
+}
+
 #[test]
 fn init_and_walk_up_resolution() {
     let tmp = tempfile::tempdir().unwrap();
