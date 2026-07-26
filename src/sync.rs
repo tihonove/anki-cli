@@ -119,24 +119,33 @@ async fn auth_with_resolved_endpoint(
     Ok(auth)
 }
 
+/// Whether the local collection holds changes that a full download would throw
+/// away.
+///
+/// `sync_status_offline` only compares the collection's change stamps against
+/// the last-sync stamp, so a collection that has never synced (last sync = 0)
+/// always looks dirty — even a freshly `init`ed one, whose schema stamp is its
+/// creation time. rslib used to special-case that (`CollectionTimestamps::
+/// never_synced`) but dropped it in 26.05, so we answer it here: for a
+/// never-synced collection the only meaningful question is whether it holds any
+/// notes of its own.
+fn has_local_changes(col: &mut anki::collection::Collection) -> Result<bool> {
+    if col.sync_meta()?.usn.0 == 0 {
+        return Ok(!col.search_notes_unordered("")?.is_empty());
+    }
+    Ok(col.sync_status_offline()?
+        != anki_proto::sync::sync_status_response::Required::NoChanges)
+}
+
 /// Full download: replace local collection with the server's copy.
 pub async fn pull(dir: &Path, config: &mut Config, force: bool) -> Result<()> {
     let mut col = open_collection(dir)?;
 
-    if !force {
-        let mut pending = col.sync_status_offline()?
-            != anki_proto::sync::sync_status_response::Required::NoChanges;
-        // A never-synced collection reports NoChanges regardless of content,
-        // so guard its notes separately.
-        if !pending && col.sync_meta()?.usn.0 == 0 {
-            pending = !col.search_notes_unordered("")?.is_empty();
-        }
-        if pending {
-            bail!(
-                "local collection has unsynced changes that `pull` would discard; \
-                 run `anki-cli sync` first, or `anki-cli pull --force` to discard them"
-            );
-        }
+    if !force && has_local_changes(&mut col)? {
+        bail!(
+            "local collection has unsynced changes that `pull` would discard; \
+             run `anki-cli sync` first, or `anki-cli pull --force` to discard them"
+        );
     }
 
     let auth = auth_with_resolved_endpoint(dir, config, &col).await?;
@@ -223,8 +232,7 @@ pub async fn status(dir: &Path, config: &Config, offline: bool) -> Result<Status
     let cards = col
         .search_cards("", anki::search::SortMode::NoOrder)?
         .len();
-    let local_changes = col.sync_status_offline()?
-        != anki_proto::sync::sync_status_response::Required::NoChanges;
+    let local_changes = has_local_changes(&mut col)?;
 
     let (remote, server_message) = if offline {
         ("offline".to_string(), None)
