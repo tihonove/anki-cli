@@ -219,6 +219,8 @@ pub struct StatusReport {
     pub collection_exists: bool,
     pub notes: usize,
     pub cards: usize,
+    /// Where those cards sit: new / learning / review / suspended / buried.
+    pub queues: crate::cards::QueueCounts,
     pub local_changes: bool,
     /// "up_to_date" | "sync_needed" | "conflict" | "offline" (not checked)
     pub remote: String,
@@ -232,6 +234,7 @@ pub async fn status(dir: &Path, config: &Config, offline: bool) -> Result<Status
     let cards = col
         .search_cards("", anki::search::SortMode::NoOrder)?
         .len();
+    let queues = crate::cards::queue_counts(&mut col, "")?;
     let local_changes = has_local_changes(&mut col)?;
 
     let (remote, server_message) = if offline {
@@ -256,6 +259,7 @@ pub async fn status(dir: &Path, config: &Config, offline: bool) -> Result<Status
         collection_exists: exists,
         notes,
         cards,
+        queues,
         local_changes,
         remote,
         server_message,
