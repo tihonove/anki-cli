@@ -26,6 +26,11 @@ use assert_cmd::Command;
 const MEDIA_NAME: &str = "anki-cli-e2e-red-100x100.png";
 const MEDIA_BYTES: &[u8] = include_bytes!("fixtures/red100.png");
 
+/// Field added to Basic on device A to exercise a schema change over real sync.
+/// A fixed name is safe: A's `push` replaces the whole server collection each
+/// run, so nothing accumulates on the shared account.
+const EXTRA_FIELD: &str = "AnkiCliE2E";
+
 /// Test credentials from the environment, or `None` to skip.
 fn creds() -> Option<(String, String)> {
     let user = std::env::var("ANKI_TEST_USERNAME").ok().filter(|s| !s.is_empty())?;
@@ -83,6 +88,21 @@ fn ankiweb_round_trip() {
     std::fs::create_dir_all(&media_a).unwrap();
     std::fs::write(media_a.join(MEDIA_NAME), MEDIA_BYTES).unwrap();
 
+    // A schema change, which only a full upload can carry to the server — this
+    // is the path a normal `sync` refuses, so it is worth proving end to end.
+    let out = cli(dir_a, &user, &pass)
+        .args(["--json", "models", "add-field", "Basic", EXTRA_FIELD])
+        .assert()
+        .success();
+    let report: serde_json::Value = serde_json::from_slice(&out.get_output().stdout).unwrap();
+    assert_eq!(report["full_sync_required"], true, "adding a field is a schema change");
+
+    // …and a card-level change, to confirm scheduling state survives the trip.
+    cli(dir_a, &user, &pass)
+        .args(["suspend", "tag:anki-cli-e2e"])
+        .assert()
+        .success();
+
     // Full upload: the server collection becomes A's copy — deterministic, and
     // works even if the account was never synced before.
     cli(dir_a, &user, &pass).arg("push").assert().success();
@@ -108,6 +128,26 @@ fn ankiweb_round_trip() {
         notes[0]["fields"][0]["value"].as_str().unwrap().contains(&token),
         "the found note's Front should carry the run token"
     );
+
+    // The schema change must have travelled: B sees the new field, and the note's
+    // existing values are still under their original names rather than shifted.
+    let out = cli(dir_b, &user, &pass).args(["--json", "models", "Basic"]).assert().success();
+    let model: serde_json::Value = serde_json::from_slice(&out.get_output().stdout).unwrap();
+    let fields: Vec<&str> = model["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f.as_str().unwrap())
+        .collect();
+    assert_eq!(fields, vec!["Front", "Back", EXTRA_FIELD], "schema change should reach B intact");
+    assert_eq!(notes[0]["fields"][1]["value"], "e2e back", "existing values must not shift");
+
+    // So must the scheduling state, which lives on the card rather than the note.
+    let out = cli(dir_b, &user, &pass).args(["--json", "cards", "tag:anki-cli-e2e"]).assert().success();
+    let cards: serde_json::Value = serde_json::from_slice(&out.get_output().stdout).unwrap();
+    let cards = cards.as_array().expect("cards returns a JSON array");
+    assert_eq!(cards.len(), 1, "device B should see exactly the card A pushed");
+    assert_eq!(cards[0]["queue"], "suspended", "the suspend done on A must reach B");
 
     // The media file authored on A must have downloaded to B, byte-for-byte.
     let got = std::fs::read(dir_b.join("collection.media").join(MEDIA_NAME))

@@ -44,6 +44,34 @@ DRY_RUN=1 scripts/release.sh patch   # everything except the push
   `.anki/collection.media`. It's a separate step from collection `sync`: uploads local
   additions and downloads server-side additions/deletions, merged file-by-file (never
   conflicts). See `sync::sync_media`, which drives anki's `MediaManager::sync_media`.
-- Card study (scheduler/review) isn't exposed in the CLI — the assumption is that you study in
-  regular Anki, while the CLI is for authoring and syncing.
+- Answering cards (the review loop) isn't exposed in the CLI — the assumption is that you
+  study in regular Anki. Queue management around it is: see `cards.rs`.
 - License: `rslib` is AGPL-3.0, so this tool is AGPL-3.0 too.
+
+## Source layout
+
+| file | what lives there |
+|---|---|
+| `main.rs` | the clap command tree and all human-readable printing |
+| `select.rs` | `<QUERY>` / `--ids` / `--nids` + `--sort` / `--sort-field` / `--limit` → concrete ids |
+| `ops.rs` | `OpReport`, the single result envelope every bulk command returns |
+| `cards.rs` | card listing, suspend/unsuspend/forget/reposition, moving between decks |
+| `notes.rs` | note CRUD, and the bulk edit path |
+| `decks.rs` | deck listing with queue counts, removal, renaming |
+| `models.rs` | notetype field/template surgery |
+| `sync.rs` | login, sync/pull/push, media sync, status |
+| `mcp.rs` | the MCP server: one tool per CLI operation |
+
+Three rslib constraints shaped the above, and are worth knowing before extending it:
+
+- **`anki::card::Card`'s fields are `pub(crate)`.** Queue, due and interval are read through
+  the public `From<Card> for anki_proto::cards::Card` conversion (see `cards.rs`).
+- **`Collection::transact` is `pub(crate)`,** so a bulk operation can't be wrapped in one
+  transaction of our own. Bulk note edits therefore go through rslib's own single-transaction
+  entry points: `add_tags_to_notes` / `remove_tags_from_notes`, and `NotesService::update_notes`.
+- **`Notetype::add_field` is `pub(crate)`.** Fields are pushed onto `nt.fields` directly; the
+  `ord` each existing field carries is what tells rslib where its values used to live, so
+  `ord`s are never renumbered by hand (`notetype/schemachange.rs` does the migration).
+
+Deck removal deletes the cards it finds, and with them any note left without cards — which is
+why `decks rm --keep-notes` moves the cards out first rather than passing a flag.

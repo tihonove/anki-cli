@@ -136,25 +136,98 @@ pub fn edit_note(
     note_info(col, nid)
 }
 
-pub fn remove_notes(col: &mut Collection, note_ids: &[i64]) -> Result<usize> {
-    let nids: Vec<NoteId> = note_ids.iter().map(|&id| NoteId(id)).collect();
-    for nid in &nids {
+#[derive(Debug, Default, Serialize)]
+pub struct BulkEditReport {
+    pub fields_updated: usize,
+    pub tags_added: usize,
+    pub tags_removed: usize,
+}
+
+impl BulkEditReport {
+    /// Notes touched by at least one of the three passes — the best available
+    /// approximation, since each pass counts independently.
+    pub fn changed(&self) -> usize {
+        self.fields_updated
+            .max(self.tags_added)
+            .max(self.tags_removed)
+    }
+}
+
+/// Apply the same edit to many notes.
+///
+/// Tags go through rslib's bulk tag ops and fields through the notes service —
+/// both are single transactions, which matters when the selection is ten
+/// thousand notes. `Collection::transact` is crate-private, so these are the
+/// only ways to avoid one transaction per note.
+pub fn edit_notes(
+    col: &mut Collection,
+    nids: &[NoteId],
+    named_fields: &[(String, String)],
+    add_tags: &[String],
+    remove_tags: &[String],
+) -> Result<BulkEditReport> {
+    use anki::services::NotesService;
+
+    let mut report = BulkEditReport::default();
+    if !named_fields.is_empty() {
+        let mut updated: Vec<anki_proto::notes::Note> = Vec::new();
+        for nid in nids {
+            let mut note = col
+                .storage
+                .get_note(*nid)?
+                .with_context(|| format!("no note with id {}", nid.0))?;
+            let nt = col
+                .get_notetype(note.notetype_id)?
+                .context("notetype of note missing")?;
+            let before = note.fields().clone();
+            for (name, value) in named_fields {
+                let idx = field_index(&nt, name)?;
+                note.set_field(idx, value.clone()).map_err(|e| anyhow!("{e}"))?;
+            }
+            if *note.fields() != before {
+                updated.push(note.into());
+            }
+        }
+        report.fields_updated = updated.len();
+        if !updated.is_empty() {
+            let _changes = NotesService::update_notes(
+                col,
+                anki_proto::notes::UpdateNotesRequest {
+                    notes: updated,
+                    skip_undo_entry: false,
+                },
+            )
+            .map_err(|e| anyhow!("updating notes: {e}"))?;
+        }
+    }
+    if !add_tags.is_empty() {
+        let out = col
+            .add_tags_to_notes(nids, &add_tags.join(" "))
+            .map_err(|e| anyhow!("adding tags: {e}"))?;
+        report.tags_added = out.output;
+    }
+    if !remove_tags.is_empty() {
+        let out = col
+            .remove_tags_from_notes(nids, &remove_tags.join(" "))
+            .map_err(|e| anyhow!("removing tags: {e}"))?;
+        report.tags_removed = out.output;
+    }
+    Ok(report)
+}
+
+pub fn remove_notes(col: &mut Collection, nids: &[NoteId]) -> Result<usize> {
+    for nid in nids {
         if col.storage.get_note(*nid)?.is_none() {
             bail!("no note with id {}", nid.0);
         }
     }
-    let out = col.remove_notes(&nids).map_err(|e| anyhow!("removing notes: {e}"))?;
+    let out = col.remove_notes(nids).map_err(|e| anyhow!("removing notes: {e}"))?;
     Ok(out.output)
 }
 
-pub fn search_notes(col: &mut Collection, query: &str, limit: usize) -> Result<Vec<NoteInfo>> {
-    let nids = col
-        .search_notes(query, SortMode::NoOrder)
-        .map_err(|e| anyhow!("search '{query}': {e}"))?;
-    nids.iter()
-        .take(limit)
-        .map(|&nid| note_info(col, nid))
-        .collect()
+/// Full note info for an already-resolved selection, in the order given.
+pub fn notes_info(col: &mut Collection, nids: &[NoteId]) -> Result<Vec<NoteInfo>> {
+    nids.iter().map(|&nid| note_info(col, nid)).collect()
 }
 
 pub fn note_info(col: &mut Collection, nid: NoteId) -> Result<NoteInfo> {

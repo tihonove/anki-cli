@@ -46,6 +46,28 @@ anki-cli sync                                     # push changes up (two-way mer
 anki-cli sync-media                               # sync media files (images, audio)
 ```
 
+### Introducing a big deck a few words at a time
+
+The bulk commands take an **Anki search** wherever they take ids, so a 10k-note
+frequency list is workable from the terminal: suspend the lot once, then release the next
+batch each day — in frequency order, because `--sort-field` sorts numerically when the
+field looks numeric.
+
+```bash
+anki-cli suspend 'deck:"A Frequency Dictionary of Dutch"' --dry-run   # count first
+anki-cli suspend 'deck:"A Frequency Dictionary of Dutch"'
+
+# every morning: the next 10 by Rank
+anki-cli unsuspend 'deck:"A Frequency Dictionary of Dutch" is:suspended' \
+    --sort-field Rank --limit 10
+
+anki-cli decks                                    # how many are still in reserve
+anki-cli cards 'deck:"A Frequency Dictionary of Dutch" -is:suspended'
+```
+
+`search` returns notes; `cards` returns cards with their scheduling state (`queue`, `type`,
+`due`, `ivl`), which is what answers "what is actually in the queue right now".
+
 ## Use it from an agent (MCP)
 
 The same binary is an MCP server over stdio — nothing extra to install. Wire it into Claude
@@ -65,13 +87,21 @@ password out of the conversation, `anki_login` falls back to the server's `ANKI_
 `ANKI_PASSWORD` environment variables when its arguments are omitted. Either way only the
 session key is stored, never the password.
 
-**Tools** (15):
+**Tools** (28):
 
 - **Auth** — `anki_login`, `anki_logout`
 - **Sync** — `anki_status`, `anki_sync`, `anki_pull`, `anki_push`, `anki_sync_media`
 - **Notes** — `anki_add_note`, `anki_add_notes` (bulk), `anki_search`, `anki_get_note`,
-  `anki_edit_note`, `anki_delete_notes`
-- **Schema** — `anki_list_decks`, `anki_list_models`
+  `anki_edit_note`, `anki_bulk_edit_notes`, `anki_delete_notes`
+- **Cards** — `anki_cards`, `anki_suspend`, `anki_unsuspend`, `anki_forget`,
+  `anki_reposition`, `anki_move_cards`
+- **Decks** — `anki_list_decks`, `anki_delete_deck`, `anki_rename_deck`
+- **Notetypes** — `anki_list_models`, `anki_add_field`, `anki_remove_field`,
+  `anki_move_field`, `anki_edit_template`
+
+Every card/note tool takes the same selector: a `query` (Anki search syntax) *or* explicit
+`card_ids`/`note_ids`, narrowed by `limit`, `sort`, `sort_field` and `reverse`, and every
+destructive one takes `dry_run`.
 
 A sync conflict reaches the agent as `result: "conflict"` with a hint, resolved by calling
 `anki_pull` (take server) or `anki_push` (take local) — see [Sync model](#sync-model) below.
@@ -101,14 +131,42 @@ push                                          full upload to the server
 sync-media                                    sync media files (images, audio)
 
 add [-d DECK] [-m MODEL] [field values...] [--field Name=Value]... [-t "tags"]
-search <query> [--limit N]                    Anki search syntax: deck:X tag:Y word
+search <query> [--limit N] [--sort C] [--sort-field NAME]    Anki search syntax: deck:X tag:Y word
+cards <SELECTOR>                              cards with queue/type/due/ivl/reps/lapses
 show <note_id>                                the full note
-edit <note_id> [--field Name=Value]... [--add-tags "..."] [--remove-tags "..."]
-rm <note_id>...                               delete notes (with their cards)
-decks                                         list decks with card counts
+edit <note_id> | --query Q | --ids N...  [--field Name=Value]... [--add-tags "..."] [--remove-tags "..."]
+rm <note_id>... | --query Q                   delete notes (with their cards)
+
+suspend   <SELECTOR>                          take cards out of the study queue
+unsuspend <SELECTOR>                          put them back
+forget    <SELECTOR> [--restore-position] [--reset-counts]   reset scheduling progress
+reposition <SELECTOR> [--start N] [--step N] [--randomize] [--shift]   order the new queue
+mv <SELECTOR> --deck NAME [--no-create]       move cards to another deck
+
+decks                                         decks with new/learning/review/suspended counts
+decks rm <NAME> (--with-notes | --keep-notes [--to DECK])
+decks mv <FROM> <TO>                          rename (child decks follow)
+
 models [name]                                 list notetypes / fields of a specific notetype
+models add-field <MODEL> <FIELD> [--pos N]
+models rm-field <MODEL> <FIELD>
+models mv-field <MODEL> <FIELD> --pos N
+models edit-template <MODEL> [--card N] [--front FILE] [--back FILE]
+
 mcp                                           run as an MCP server over stdio
 ```
+
+`<SELECTOR>` is `[QUERY] | --ids <CID>... | --nids <NID>...`, plus `--limit N`,
+`--sort <due|position|added|modified|interval|lapses|reps|ease|sort-field|deck|tags>`,
+`--sort-field <NAME>` and `--reverse`. `--sort-field` compares numerically when every value
+looks like a number, so Rank 2 sorts before Rank 10.
+
+Everything destructive takes `--dry-run`, which reports what would be affected and changes
+nothing.
+
+The three `models` subcommands that alter fields or templates are **schema changes**: a
+normal `sync` afterwards reports a conflict, and the collection has to go up with a full
+`push`. The commands say so in their output.
 
 Global flags:
 
@@ -160,8 +218,11 @@ but the app has to stay open.
 - Media files (images/audio referenced by notes) sync with `anki-cli sync-media`, kept in
   `.anki/collection.media`. It's a separate step from `sync`: collection sync moves the notes,
   `sync-media` moves the files they point at.
-- Card study (scheduler/review) isn't exposed — the assumption is that you study in regular
-  Anki, while this tool is for authoring and syncing.
+- Answering cards (the review loop itself) isn't exposed — the assumption is that you study
+  in regular Anki. Managing the queue around that is: suspend/unsuspend, forget, and
+  repositioning the new-card order.
+- Adding media files isn't exposed yet; `sync-media` moves the files that notes already
+  reference.
 - License: `rslib` is AGPL-3.0, so this tool is AGPL-3.0 too.
 
 Building from source, releasing, and internals: see [docs/development.md](docs/development.md).
