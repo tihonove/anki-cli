@@ -21,8 +21,8 @@ curl -fsSL https://raw.githubusercontent.com/tihonove/anki-cli/main/install.sh |
 ```
 
 Drops a prebuilt binary into `~/.local/bin` (override the dir with `ANKI_CLI_BIN`, or pin a
-release with `ANKI_CLI_VERSION=vX.Y.Z`). Prebuilt binaries exist for **Linux x86_64** and
-**macOS arm64**; you can also grab one by hand from the
+release with `ANKI_CLI_VERSION=vX.Y.Z`). Prebuilt binaries exist for **Linux x86_64**,
+**Linux arm64** and **macOS arm64**; you can also grab one by hand from the
 [releases](https://github.com/tihonove/anki-cli/releases) (`chmod +x`, put it on your
 `PATH`). On other platforms, [build from source](docs/development.md).
 

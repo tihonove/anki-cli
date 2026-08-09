@@ -32,7 +32,7 @@ asset="anki-cli-${os_part}-${arch_part}"
 
 # Only the combinations CI actually builds exist as assets.
 case "$asset" in
-  anki-cli-linux-x86_64|anki-cli-macos-aarch64) ;;
+  anki-cli-linux-x86_64|anki-cli-linux-aarch64|anki-cli-macos-aarch64) ;;
   *) err "no prebuilt binary for ${os}/${arch} yet — build from source instead" ;;
 esac
 
