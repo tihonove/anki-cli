@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "anki"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20#39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20"
+source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
 dependencies = [
  "ammonia",
  "anki_i18n",
@@ -76,7 +76,7 @@ dependencies = [
  "hyper",
  "id_tree",
  "inflections",
- "itertools",
+ "itertools 0.14.0",
  "nom",
  "num_cpus",
  "num_enum",
@@ -143,7 +143,7 @@ dependencies = [
 [[package]]
 name = "anki_i18n"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20#39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20"
+source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
 dependencies = [
  "anki_io",
  "anyhow",
@@ -152,7 +152,7 @@ dependencies = [
  "fluent-syntax",
  "inflections",
  "intl-memoizer",
- "itertools",
+ "itertools 0.14.0",
  "num-format",
  "phf 0.11.3",
  "regex",
@@ -164,7 +164,7 @@ dependencies = [
 [[package]]
 name = "anki_io"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20#39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20"
+source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
 dependencies = [
  "camino",
  "rand 0.9.5",
@@ -175,13 +175,13 @@ dependencies = [
 [[package]]
 name = "anki_proto"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20#39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20"
+source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
 dependencies = [
  "anki_io",
  "anki_proto_gen",
  "anyhow",
  "inflections",
- "itertools",
+ "itertools 0.14.0",
  "prost",
  "prost-build",
  "prost-reflect",
@@ -194,13 +194,13 @@ dependencies = [
 [[package]]
 name = "anki_proto_gen"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20#39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20"
+source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
 dependencies = [
  "anki_io",
  "anyhow",
  "camino",
  "inflections",
- "itertools",
+ "itertools 0.14.0",
  "prost-reflect",
  "prost-types",
  "regex",
@@ -1046,11 +1046,11 @@ dependencies = [
 
 [[package]]
 name = "fsrs"
-version = "6.6.1"
+version = "6.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8a99ea3dec9af37c9ed3835463ff6820a578a0026a8e370b4c1c0db48dfab3f"
+checksum = "89836c0a26b347b585b23824034600b69bfc7f0b0112d0cd656791799eb3a717"
 dependencies = [
- "itertools",
+ "itertools 0.15.0",
  "log",
  "ndarray",
  "priority-queue",
@@ -1601,6 +1601,15 @@ name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -2287,7 +2296,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
  "heck",
- "itertools",
+ "itertools 0.14.0",
  "log",
  "multimap",
  "once_cell",
@@ -2307,7 +2316,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn",
