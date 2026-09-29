@@ -6,8 +6,8 @@ description = "Git-like CLI for Anki collections with AnkiWeb sync"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
-anki = { git = "https://github.com/ankitects/anki", rev = "39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20", features = ["rustls"] }
-anki_proto = { git = "https://github.com/ankitects/anki", rev = "39e4b0b48c5bb22e9c22ad87c64ff14e6a24dc20" }
+anki = { git = "https://github.com/ankitects/anki", rev = "29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba", features = ["rustls"] }
+anki_proto = { git = "https://github.com/ankitects/anki", rev = "29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba" }
 clap = { version = "4", features = ["derive", "env"] }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
