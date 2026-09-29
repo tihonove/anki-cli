@@ -36,6 +36,27 @@ jobs:
           echo "Latest anki release tag: $tag"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      # GH_PAT is a fine-grained PAT, and those expire. With a missing or expired
+      # token the "Open PR" step dies deep inside git ("could not read Username for
+      # 'https://github.com'"), which says nothing about the cause. Check the token
+      # up front, before the (slow) cargo update, and say what to do.
+      - name: Check GH_PAT
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "::error::GH_PAT secret is not set. Create a fine-grained PAT (Contents + Pull requests: write) and add it as the GH_PAT repository secret."
+            exit 1
+          fi
+          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+                     -H "Authorization: Bearer $GH_PAT" \
+                     "https://api.github.com/repos/$GITHUB_REPOSITORY")
+          if [ "$status" != "200" ]; then
+            echo "::error::GH_PAT is rejected by GitHub (HTTP $status), most likely expired. Regenerate the fine-grained PAT (Contents + Pull requests: write, longest expiry allowed) and update the GH_PAT repository secret."
+            exit 1
+          fi
+          echo "GH_PAT is valid"
+
       # No-op if already on that commit; cargo update needs no protoc (no build).
       - name: Re-pin to the latest tag
         run: scripts/update-anki.sh "${{ steps.latest.outputs.tag }}"
