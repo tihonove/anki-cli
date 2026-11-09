@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "anki"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
+source = "git+https://github.com/ankitects/anki?rev=c06370ff4d87cb48d825f90cc83e02b9a4e84ecd#c06370ff4d87cb48d825f90cc83e02b9a4e84ecd"
 dependencies = [
  "ammonia",
  "anki_i18n",
@@ -143,7 +143,7 @@ dependencies = [
 [[package]]
 name = "anki_i18n"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
+source = "git+https://github.com/ankitects/anki?rev=c06370ff4d87cb48d825f90cc83e02b9a4e84ecd#c06370ff4d87cb48d825f90cc83e02b9a4e84ecd"
 dependencies = [
  "anki_io",
  "anyhow",
@@ -164,7 +164,7 @@ dependencies = [
 [[package]]
 name = "anki_io"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
+source = "git+https://github.com/ankitects/anki?rev=c06370ff4d87cb48d825f90cc83e02b9a4e84ecd#c06370ff4d87cb48d825f90cc83e02b9a4e84ecd"
 dependencies = [
  "camino",
  "rand 0.9.5",
@@ -175,7 +175,7 @@ dependencies = [
 [[package]]
 name = "anki_proto"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
+source = "git+https://github.com/ankitects/anki?rev=c06370ff4d87cb48d825f90cc83e02b9a4e84ecd#c06370ff4d87cb48d825f90cc83e02b9a4e84ecd"
 dependencies = [
  "anki_io",
  "anki_proto_gen",
@@ -194,7 +194,7 @@ dependencies = [
 [[package]]
 name = "anki_proto_gen"
 version = "0.0.0"
-source = "git+https://github.com/ankitects/anki?rev=29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba#29bb700b951e3f0c0cb69b77c0180fc1fe33e6ba"
+source = "git+https://github.com/ankitects/anki?rev=c06370ff4d87cb48d825f90cc83e02b9a4e84ecd#c06370ff4d87cb48d825f90cc83e02b9a4e84ecd"
 dependencies = [
  "anki_io",
  "anyhow",
